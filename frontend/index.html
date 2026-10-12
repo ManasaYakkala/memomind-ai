@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MemoMind AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6fb;
+      color: #20243a;
+    }
+    main { max-width: 760px; margin: 45px auto; padding: 20px; }
+    header { text-align: center; margin-bottom: 30px; }
+    header h1 { margin-bottom: 8px; color: #5146d8; }
+    header p { color: #62677a; }
+    section {
+      background: white;
+      padding: 22px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 18px #20243a0d;
+    }
+    h2 { font-size: 19px; margin-top: 0; }
+    textarea, input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 12px;
+      border: 1px solid #d6d9e5;
+      border-radius: 8px;
+      font: inherit;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    button {
+      background: #5146d8;
+      color: white;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #3f35b7; }
+    #status { margin-top: 12px; color: #276749; }
+    .memory {
+      border: 1px solid #e1e3ed;
+      padding: 14px;
+      border-radius: 9px;
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+    .memory h3 { margin: 0 0 8px; font-size: 16px; }
+    .memory p { white-space: pre-wrap; line-height: 1.5; }
+    .score { color: #777; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>🧠 MemoMind AI</h1>
+      <p>Your personal memory assistant</p>
+    </header>
+
+    <section>
+      <h2>Save a memory</h2>
+      <input id="title" placeholder="Memory title">
+      <textarea id="memory" placeholder="What do you want MemoMind to remember?"></textarea>
+      <button onclick="saveMemory()">Save Memory</button>
+      <p id="status" role="status"></p>
+    </section>
+
+    <section>
+      <h2>Search your memories</h2>
+      <input id="query" placeholder="Try: What is my project deadline?">
+      <button onclick="searchMemories()">Search Memories</button>
+      <div id="results"></div>
+    </section>
+  </main>
+
+  <script>
+    async function saveMemory() {
+      const title = document.getElementById("title").value.trim();
+      const text = document.getElementById("memory").value.trim();
+      const status = document.getElementById("status");
+
+      if (!title || !text) {
+        status.textContent = "Please enter a title and memory.";
+        return;
+      }
+
+      status.textContent = "Saving memory...";
+
+      try {
+        const response = await fetch("/webhook?uid=u0xzc2oheMWNCkd0SRMMhVgDaU23", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: crypto.randomUUID(),
+            structured: {
+              title: title,
+              overview: text,
+              category: "general"
+            },
+            transcript_segments: []
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Could not save memory.");
+
+        status.textContent = "Memory saved successfully!";
+        document.getElementById("title").value = "";
+        document.getElementById("memory").value = "";
+      } catch (error) {
+        status.textContent = "Error: " + error.message;
+      }
+    }
+
+    async function searchMemories() {
+      const query = document.getElementById("query").value.trim();
+      const results = document.getElementById("results");
+
+      if (!query) {
+        results.textContent = "Please enter something to search for.";
+        return;
+      }
+
+      results.textContent = "Searching...";
+
+      try {
+        const response = await fetch(
+          "/search?q=" + encodeURIComponent(query) + "&uid=u0xzc2oheMWNCkd0SRMMhVgDaU23"
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Search failed.");
+
+        results.innerHTML = "";
+
+        if (data.results.length === 0) {
+          results.textContent = "No matching memories found.";
+          return;
+        }
+
+        data.results.forEach(item => {
+          const card = document.createElement("article");
+          card.className = "memory";
+
+          const heading = document.createElement("h3");
+          heading.textContent = item.title || "Untitled memory";
+
+          const paragraph = document.createElement("p");
+          paragraph.textContent = item.text || "";
+
+          const score = document.createElement("div");
+          score.className = "score";
+          score.textContent = "Relevance score: " +
+            Number(item.score).toFixed(3);
+
+          card.append(heading, paragraph, score);
+          results.appendChild(card);
+        });
+      } catch (error) {
+        results.textContent = "Error: " + error.message;
+      }
+    }
+  </script>
+
+<section style="margin-top: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 12px;">
+  <h2>Chat with MemoMind AI</h2>
+  <p>Ask questions about your saved memories.</p>
+
+  <textarea
+    id="chatMessage"
+    placeholder="Example: What do you remember about my plans?"
+    rows="3"
+    style="width: 100%; box-sizing: border-box; padding: 10px;"
+  ></textarea>
+
+  <button id="chatButton" onclick="sendChatMessage()">
+    Send Message
+  </button>
+
+  <p id="chatStatus" role="status"></p>
+
+  <div
+    id="chatReply"
+    style="white-space: pre-wrap; padding: 12px; margin-top: 10px;"
+  ></div>
+</section>
+
+<script>
+async function sendChatMessage() {
+  const input = document.getElementById("chatMessage");
+  const button = document.getElementById("chatButton");
+  const status = document.getElementById("chatStatus");
+  const reply = document.getElementById("chatReply");
+  const message = input.value.trim();
+
+  if (!message) {
+    status.textContent = "Please enter a message first.";
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = "MemoMind is thinking...";
+  reply.textContent = "";
+
+  try {
+    const response = await fetch("/chat?uid=u0xzc2oheMWNCkd0SRMMhVgDaU23", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Chat request failed.");
+    }
+
+    reply.textContent =
+      data.response || data.message || JSON.stringify(data, null, 2);
+    status.textContent = "Response received.";
+  } catch (error) {
+    status.textContent = "Could not get a response: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+</script>
+</body>
+
+</body>
+</html>
