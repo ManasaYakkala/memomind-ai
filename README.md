@@ -19,6 +19,32 @@ MemoMind AI captures spoken memories through Omi, stores them in Qdrant, and use
 4. The chat endpoint retrieves relevant memories and sends them as context to Lyzr.
 5. Lyzr generates an answer that is returned to the user.
 
+## System Architecture
+
+MemoMind AI connects voice conversations, persistent memory retrieval, and an AI agent.
+
+```mermaid
+flowchart TD
+    A[Omi Voice Conversations] --> B[FastAPI Backend on Render]
+    B --> C[Memory Processing]
+    C --> D[(Qdrant Vector Database)]
+    E[User Question] --> B
+    B --> F[Retrieve Relevant Memories]
+    D --> F
+    F --> G[Lyzr AI Agent]
+    G --> H[AI Response]
+    H --> E
+```
+
+**Components**
+- **Omi:** Voice conversation input.
+- **FastAPI on Render:** Backend API that processes incoming requests.
+- **Qdrant:** Vector database intended to store and retrieve memories.
+- **Lyzr:** AI agent for generating responses using relevant context.
+
+*Note: The diagram represents the intended system design. Verify that Omi ingestion and Qdrant storage work end to end before claiming they are fully operational.*
+
+
 ## Tech Stack
 
 - Python
